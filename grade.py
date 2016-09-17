@@ -9,6 +9,9 @@
 import sys
 import os
 import time
+import argparse
+
+DEBUG = False
 
 ROOT_HANDIN_DIRECTORY = "/user/cse231/Handin/"        #this should point to the folder containing all of the handin data, filepath should end in a "/" character
 SECTION_IDENTIFIER = "Section"                        #the prefix for a section folder
@@ -17,6 +20,67 @@ FILES_TO_OPEN = ["*.output","proj*.py"]               #these files will automati
 EDITOR = "gedit"
 
 FILES_TO_OPEN.append(SCORE_SHEET_FILE_STYLE)
+
+arg_parser = argparse.ArgumentParser(prog="CSE231 Grading Helper", usage="Assist in the grading of CSE231 projects.")
+# cannot grade a section and a student at the same time, yet (menu wip)
+section_vs_student_group = arg_parser.add_mutually_exclusive_group()
+section_vs_student_group.add_argument("-s", "--section", help="Desired section to grade.", type=int)
+section_vs_student_group.add_argument("-n", "--netid", help="Netid of specific student(s) to grade.", type=str, nargs='+')
+arg_parser.add_argument("-p", "--project", help="Desired project to grade.", type=str)
+arg_parser.add_argument("-f", "--file", help="Open a specific file for grading.", type=str, nargs='+')
+arg_parser.add_argument("--debug", help="Put script in debug mode", action="store_true", default=False)
+arg_parser.add_argument("-k", "--skip", help="TBD", action="store_true")
+arg_parser.add_argument("-r", "--prompt", help="TBD", action="store_true")
+
+args = arg_parser.parse_args()
+
+def printd(*strings):
+    if args.debug:
+        print("DEBUG\t", ' '.join(map(str, strings)))
+
+def parse_my_args():
+    global sections
+    # global students
+    # global projects
+
+    if args.debug:
+        DEBUG = True
+    if args.file:
+        FILES_TO_OPEN.extend(args.file)
+        printd("Files to open: ", FILES_TO_OPEN)
+
+    if args.skip:
+        mode_regrade = False
+        printd("mode_regade = {}".format(mode_regrade))
+
+    if args.prompt:
+        mode_prompt = True
+        FILES_TO_OPEN.remove(SCORE_SHEET_FILE_STYLE)
+        printd("Files to open: ", FILES_TO_OPEN)
+        printd("mode_prompt = {}".format(mode_prompt))
+
+    if args.section is None and args.netid is None:
+        default_prompt(students)
+    else:
+        printd("section = {} netid = {}". format(args.section, args.netid))
+
+    if args.netid:
+        for net_id in args.netid:
+            students.append(validate_student(net_id)) if not DEBUG else students.append(net_id)
+        printd("students: {}".format(students))
+
+    if args.section:
+        sections.append(args.section)
+        if not DEBUG:
+            sections = validate_sections(sections, student)
+        printd("sections = {}".format(sections))
+
+    if args.project:
+        projects.append(args.project)
+        printd("projects = {}".format(projects))
+
+    if args.debug:
+        input("\n\nPress enter when done.")
 
 def process_args():
     '''Grab command line arguments'''
@@ -434,6 +498,11 @@ def exit_message():
     print("                .               .")
     print()
 
+def default_prompt(students):
+    user_selection = input("\nWould you like to grade multiple students? (y/n): ")
+    if(user_selection.lower() == "n"):
+        student_to_grade = input("What is the netID of the student you would like to grade?: ")
+        students += validate_student(student_to_grade)
 
 if __name__ == "__main__":
     try:
@@ -470,62 +539,62 @@ if __name__ == "__main__":
         #   Configuration  #
         ####################
 
-        if "-f" in arg_dict or "--file" in arg_dict:
-            try:
-                FILES_TO_OPEN += arg_dict["-f"]
-            except Exception:
-                pass
-            try:
-                FILES_TO_OPEN += arg_dict["--file"]
-            except Exception:
-                pass
+        parse_my_args()
 
-        if "-k" in arg_dict or "--skip" in arg_dict:
-            mode_regrade = False
+        # if "-f" in arg_dict or "--file" in arg_dict:
+            # try:
+                # FILES_TO_OPEN += arg_dict["-f"]
+            # except Exception:
+                # pass
+            # try:
+                # FILES_TO_OPEN += arg_dict["--file"]
+            # except Exception:
+                # pass
 
-        if "-r" in arg_dict or "--prompt" in arg_dict:
-            mode_prompt = True
-            FILES_TO_OPEN.remove(SCORE_SHEET_FILE_STYLE)
+        # if "-k" in arg_dict or "--skip" in arg_dict:
+            # mode_regrade = False
 
-        if "-s" not in arg_dict and "--section" not in arg_dict and "-n" not in arg_dict and "--netid" not in arg_dict:
-            user_selection = input("\nWould you like to grade multiple students? (y/n): ")
-            if(user_selection.lower() == "n"):
-                student_to_grade = input("What is the netID of the student you would like to grade?: ")
-                students += validate_student(student_to_grade)
+        # if "-r" in arg_dict or "--prompt" in arg_dict:
+            # mode_prompt = True
+            # FILES_TO_OPEN.remove(SCORE_SHEET_FILE_STYLE)
 
-        if "-n" in arg_dict or "--netid" in arg_dict:
-            nedIDs_to_add = []
-            try:
-                nedIDs_to_add += arg_dict["-n"]
-            except Exception:
-                pass
-            try:
-                nedIDs_to_add += arg_dict["--netid"]
-            except Exception:
-                pass
-            for netID in nedIDs_to_add:
-                students += validate_student(netID)
+        # if "-s" not in arg_dict and "--section" not in arg_dict and "-n" not in arg_dict and "--netid" not in arg_dict:
+            # default_prompt(students)
 
-        if "-s" in arg_dict or "--section" in arg_dict:
-            try:
-                sections += arg_dict["-s"]
-            except Exception:
-                pass
-            try:
-                sections += arg_dict["--section"]
-            except Exception:
-                pass
-        sections = validate_sections(sections,students)
+        # if "-n" in arg_dict or "--netid" in arg_dict:
+            # nedIDs_to_add = []
+            # try:
+                # nedIDs_to_add += arg_dict["-n"]
+            # except Exception:
+                # pass
+            # try:
+                # nedIDs_to_add += arg_dict["--netid"]
+            # except Exception:
+                # pass
+            # for netID in nedIDs_to_add:
+                # students += validate_student(netID)
 
-        if "-p" in arg_dict or "--project" in arg_dict:
-            try:
-                projects += arg_dict["-p"]
-            except Exception:
-                pass
-            try:
-                projects += arg_dict["--projects"]
-            except Exception:
-                pass
+        # if "-s" in arg_dict or "--section" in arg_dict:
+            # try:
+                # sections += arg_dict["-s"]
+            # except Exception:
+                # pass
+            # try:
+                # sections += arg_dict["--section"]
+            # except Exception:
+                # pass
+        # sections = validate_sections(sections,students)
+
+        # if "-p" in arg_dict or "--project" in arg_dict:
+            # try:
+                # projects += arg_dict["-p"]
+            # except Exception:
+                # pass
+            # try:
+                # projects += arg_dict["--projects"]
+            # except Exception:
+                # pass
+
         projects = validate_projects(projects,sections,students)
 
         students = construct_full_student_list(sections,students)

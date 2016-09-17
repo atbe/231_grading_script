@@ -30,7 +30,7 @@ def process_args():
             prev_arg = arg
         elif prev_arg != "":
             arg_dict[prev_arg].append(arg)
-    return arg_dict   
+    return arg_dict
 
 def validate_sections(sections,students):
     '''Prompt the user for sections (if not specified in arguments) and check validity of sections'''
@@ -143,7 +143,7 @@ def validate_student(student):
             for full_student_name in students_in_section:
                 if full_student_name.find(student) == 0:
                     student_list.append(full_student_name)
-    if student_list == []:       
+    if student_list == []:
         print("\nNo student with netID pattern \""+student+"\" could be found.  Program will now halt.\n")
         exit()
     return student_list
@@ -163,7 +163,7 @@ def construct_full_student_list(sections,students):
 
 def check_for_errors(section,student,project):
     '''Do a sanity check on the scores entered by the grader'''
-    
+
     score_sheet = SCORE_SHEET_FILE_STYLE
     if SCORE_SHEET_FILE_STYLE.find("*") != -1:
         score_sheet = score_sheet.replace("*",student)
@@ -231,13 +231,13 @@ def check_for_errors(section,student,project):
 
 def prompt(section,student,project):
     '''Called if the optional "--prompt" flag is detected.  Allows the grader to enter scores and then adds them together.'''
-    
-    command = "python3 grade.py __run_a_prompt_shell__ " + section + " " + student + " " + project 
+
+    command = "python3 grade.py __run_a_prompt_shell__ " + section + " " + student + " " + project
     os.system("gnome-terminal -x " + command)
 
 def prompt_shell(args):
     '''This is a special function that is run as a stand alone program in another window.  It extends the prompt function.'''
-    
+
     section = args[0]
     student = args[1]
     project = args[2]
@@ -280,10 +280,10 @@ def prompt_shell(args):
             end = score_file_list[primary_score_line].find("__",begin+len("Score: __"))
             score_file_list[primary_score_line] = score_file_list[primary_score_line][:begin+len("Score: __")] + str(theSum) + score_file_list[primary_score_line][end:]
             break
-        print(score_file_list[lines_with_scores[score_index]])    
+        print(score_file_list[lines_with_scores[score_index]])
         for description in range(lines_with_scores[score_index]+1,lines_with_scores[score_index+1]):
             if score_file_list[description].strip() != "" and score_file_list[description].strip() != "\n":
-                print(score_file_list[description].replace("\n","")) 
+                print(score_file_list[description].replace("\n",""))
         print()
         grade_value = input("Enter new grade: ")
         print()
@@ -322,7 +322,7 @@ def grade(students,projects,mode_regrade,mode_prompt):
     for project in projects:
         for student in students:
             os.system("clear")
-            
+
             dirs_at_root = os.listdir(ROOT_HANDIN_DIRECTORY)
             section = ""
             for directory in dirs_at_root:
@@ -356,7 +356,7 @@ def grade(students,projects,mode_regrade,mode_prompt):
                         continue
 
             #actually start the grading
-            
+
             for file_to_open in FILES_TO_OPEN:
                 os.system(EDITOR+" "+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/"+file_to_open+" &")
 
@@ -368,7 +368,7 @@ def grade(students,projects,mode_regrade,mode_prompt):
                 if f[0] != ".":
                     print(f)
             print()
-            
+
             print("To run a program-----------------\"run PROGRAM_NAME [arguments]\"")
             print("To list files--------------------\"ls\"")
             print("To open a file-------------------\"open FILE_NAME\"")
@@ -376,7 +376,7 @@ def grade(students,projects,mode_regrade,mode_prompt):
             print("To quit--------------------------\"q\"\n")
 
             while(True):
-                                
+
                 user_input = input("--> ")
                 if user_input == "q":
                     check_for_errors(section,student,project)
@@ -431,7 +431,7 @@ def exit_message():
     print("         *               - ) -       *")
     print("                .               .")
     print()
-    
+
 
 if __name__ == "__main__":
     try:
@@ -529,7 +529,7 @@ if __name__ == "__main__":
         students = construct_full_student_list(sections,students)
 
         grade(students,projects,mode_regrade,mode_prompt)
-    
+
     except EOFError:
         exit_message()
         exit()

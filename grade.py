@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 ########################################################
 ###   Grading Script for CSE 231                     ###
 ###   Built by Cody Littley                          ###

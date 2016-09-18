@@ -8,11 +8,6 @@ class Student():
         self._net_id = net_id
         self._section = section
 
-    def verify_net_id(self):
-        # regex A#######
-        #if invalid, try to make valid
-        0
-
     @staticmethod
     def validate_student(grader, student):
         """Ensure that a student is in the file system.  Can handle partial
@@ -35,10 +30,18 @@ class Student():
 
     @staticmethod
     def construct_full_student_list(grader):
-        '''Break apart sections into lists of students and merge with the students list'''
+        """
+        Break apart sections into lists of students and merge with the
+        students list
+
+        Get all the directories in root_handin_directory and loop through
+        them to see if section# exists. If it does, find the student in that
+        section and add them to teh student list.
+        """
+
         students = []
         dirs_at_root = [name for name in os.listdir(grader.root_handin_directory) if os.path.isdir(os.path.join(grader.root_handin_directory, name))]
-        print("DEBUG Student.py: dirs_at_root =", dirs_at_root)
+        # print("DEBUG Student.py: dirs_at_root =", dirs_at_root)
         for directory in dirs_at_root:
             try:
                 if directory.find(Grader.Grader.SECTION_IDENTIFIER) == 0 and int(directory[len(Grader.Grader.SECTION_IDENTIFIER):]) in grader._sections:

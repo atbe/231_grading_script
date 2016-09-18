@@ -21,82 +21,33 @@ EDITOR = "gedit"
 
 FILES_TO_OPEN.append(SCORE_SHEET_FILE_STYLE)
 
-arg_parser = argparse.ArgumentParser(prog="CSE231 Grading Helper", usage="Assist in the grading of CSE231 projects.")
-# cannot grade a section and a student at the same time, yet (menu wip)
-section_vs_student_group = arg_parser.add_mutually_exclusive_group()
-section_vs_student_group.add_argument("-s", "--section", help="Desired section to grade.", type=int)
-section_vs_student_group.add_argument("-n", "--netid", help="Netid of specific student(s) to grade.", type=str, nargs='+')
-arg_parser.add_argument("-p", "--project", help="Desired project to grade.", type=str)
-arg_parser.add_argument("-f", "--file", help="Open a specific file for grading.", type=str, nargs='+')
-arg_parser.add_argument("--debug", help="Put script in debug mode", action="store_true", default=False)
-arg_parser.add_argument("-k", "--skip", help="TBD", action="store_true")
-arg_parser.add_argument("-r", "--prompt", help="TBD", action="store_true")
+def get_argv_dict():
+    """Return dict of command line arguments."""
+    arg_parser = argparse.ArgumentParser(prog="CSE231 Grading Helper", usage="Assist in the grading of CSE231 projects.")
+    # cannot grade a section and a student at the same time, yet (menu wip)
+    section_vs_student_group = arg_parser.add_mutually_exclusive_group()
+    section_vs_student_group.add_argument("-s", "--section", help="Desired section to grade.", type=int, default=0)
+    section_vs_student_group.add_argument("-n", "--netid", help="Netid of specific student(s) to grade.", type=str, nargs='+')
+    arg_parser.add_argument("-p", "--project", help="Desired project to grade.", type=str)
+    arg_parser.add_argument("-f", "--file", help="Open a specific file for grading.", type=str, nargs='+')
+    arg_parser.add_argument("--debug", help="Put script in debug mode", action="store_true", default=False)
+    arg_parser.add_argument("-k", "--skip", help="TBD", action="store_true")
+    arg_parser.add_argument("-r", "--prompt", help="TBD", action="store_true")
 
-args = arg_parser.parse_args()
+    # parse and return dict
+    args = arg_parser.parse_args()
+    args_dict = vars(args)
+    return args_dict
 
 def printd(*strings):
-    if args.debug:
+    """Assist when printing for debug mode only."""
+    if DEBUG:
         print("DEBUG\t", ' '.join(map(str, strings)))
 
 def parse_my_args():
     global sections
     # global students
     # global projects
-
-    if args.debug:
-        DEBUG = True
-    if args.file:
-        FILES_TO_OPEN.extend(args.file)
-        printd("Files to open: ", FILES_TO_OPEN)
-
-    if args.skip:
-        mode_regrade = False
-        printd("mode_regade = {}".format(mode_regrade))
-
-    if args.prompt:
-        mode_prompt = True
-        FILES_TO_OPEN.remove(SCORE_SHEET_FILE_STYLE)
-        printd("Files to open: ", FILES_TO_OPEN)
-        printd("mode_prompt = {}".format(mode_prompt))
-
-    if args.section is None and args.netid is None:
-        default_prompt(students)
-    else:
-        printd("section = {} netid = {}". format(args.section, args.netid))
-
-    if args.netid:
-        for net_id in args.netid:
-            students.append(validate_student(net_id)) if not DEBUG else students.append(net_id)
-        printd("students: {}".format(students))
-
-    if args.section:
-        sections.append(args.section)
-        if not DEBUG:
-            sections = validate_sections(sections, student)
-        printd("sections = {}".format(sections))
-
-    if args.project:
-        projects.append(args.project)
-        printd("projects = {}".format(projects))
-
-    if args.debug:
-        input("\n\nPress enter when done.")
-
-def process_args():
-    '''Grab command line arguments'''
-    flags_to_catch = ["-h","--help","-s","--section","-p","--project","-n","--netid","-k","--skip","-f","--file","-r","--prompt","__run_a_prompt_shell__"]
-    prev_arg = ""
-    arg_dict = {}
-    for arg in sys.argv:
-        if arg in flags_to_catch:
-            if arg in arg_dict:
-                pass
-            else:
-                arg_dict[arg] = []
-            prev_arg = arg
-        elif prev_arg != "":
-            arg_dict[prev_arg].append(arg)
-    return arg_dict
 
 def validate_sections(sections,students):
     '''Prompt the user for sections (if not specified in arguments) and check validity of sections'''
@@ -410,11 +361,11 @@ def grade(students,projects,mode_regrade,mode_prompt):
 
             student_project_files = os.listdir(ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project)
             if ".graded" in student_project_files:
-                if mode_regrade == True:
+                if mode_regrade:
                     user_response = input("Re-Grade project "+str(project)+" for "+student+"? (y/n): ")
                     if user_response == "n":
                         continue
-                elif mode_regrade == False:
+                elif mode_regrade:
                     continue
             else:
                 user_response = input("Grade project "+str(project)+" for "+student+"? (y/n): ")
@@ -505,100 +456,103 @@ def default_prompt(students):
         students += validate_student(student_to_grade)
 
 if __name__ == "__main__":
+   # get args from commands
+    argv_dict = get_argv_dict()
+    # debug mode if requested
+    DEBUG = argv_dict["debug"]
+    printd(argv_dict)
+
+    # os.system("clear")
+
+    # containers for data
+    mode_regrade = True
+    mode_prompt = False
+    sections = []
+    students = []
+    projects = []
+    netIDs = []
+
+    ####################
+    #   Configuration  #
+    ####################
+
+    # extra file patterns to search for
+    if argv_dict["file"]:
+        FILES_TO_OPEN.extend(argv_dict["file"])
+        printd("File patterns to open: ", FILES_TO_OPEN)
+
+    # keeping this in there for now
+    if argv_dict.get("__run_a_prompt_shell__"):
+        prompt_shell(argv_dict["__run_a_prompt_shell__"])
+
+    # file patterns to skip
+    if argv_dict["skip"]:
+        mode_regrade = False
+        printd("mode_regade = {}".format(mode_regrade))
+
+    # mode prompt? still have not read the resulting code
+    if argv_dict["prompt"]:
+        mode_prompt = True
+        FILES_TO_OPEN.remove(SCORE_SHEET_FILE_STYLE)
+        printd("Files to open: ", FILES_TO_OPEN)
+        printd("mode_prompt = {}".format(mode_prompt))
+
+    # default behaviour
+    if argv_dict["section"] is None and argv_dict["netid"] is None:
+        default_prompt(students)
+    else:
+        printd("section = {} netid = {}". format(argv_dict["section"], argv_dict["netid"]))
+
+    # grade student(s) specifically
+    if argv_dict["netid"]:
+        for net_id in argv_dict["netid"]:
+            if DEBUG:
+                students.append(net_id)
+            else:
+                students.append(validate_student(net_id))
+        printd("students: {}".format(students))
+
+    # grade section(s) specifically
+    if argv_dict["section"]:
+        sections.append(argv_dict["section"])
+        if not DEBUG:
+            sections = validate_sections(sections, students)
+        printd("sections = {}".format(sections))
+
+    # grade specific project
+    if argv_dict["project"]:
+        projects.append(argv_dict["project"])
+        printd("projects = {}".format(projects))
+
+    # show me output before moving on when in debug mode
+    if argv_dict["debug"]:
+        input("\n\nPress enter when done.")
+
+    # if "__run_a_prompt_shell__" in arg_dict:
+        # prompt_shell(arg_dict["__run_a_prompt_shell__"])
+        # exit()
+
+    #because art
+    print(" ".join(sys.argv))
+    print("                                                        ")
+    print("                            o                           ")
+    print("                    o                o                  ")
+    print("                            o                           ")
+    print("             o        o            o       o            ")
+    print("                                                        ")
+    print("           \_O__o                       o__O_/          ")
+    print("             |                             |            ")
+    print("            / )                           ( \           ")
+    print("     +=============================================+    ")
+    print("     |           CSE 231 Grading Script            |    ")
+    print("                                                        ")
+
     try:
-        os.system("clear")
-
-        arg_dict = process_args()
-        mode_regrade = True
-        mode_prompt = False
-        sections = []
-        students = []
-        projects = []
-        netIDs = []
-
-        if "__run_a_prompt_shell__" in arg_dict:
-            prompt_shell(arg_dict["__run_a_prompt_shell__"])
-            exit()
-
-        #because art
-        print(" ".join(sys.argv))
-        print("                                                        ")
-        print("                            o                           ")
-        print("                    o                o                  ")
-        print("                            o                           ")
-        print("             o        o            o       o            ")
-        print("                                                        ")
-        print("           \_O__o                       o__O_/          ")
-        print("             |                             |            ")
-        print("            / )                           ( \           ")
-        print("     +=============================================+    ")
-        print("     |           CSE 231 Grading Script            |    ")
-        print("                                                        ")
-
-        ####################
-        #   Configuration  #
-        ####################
-
-        parse_my_args()
-
-        # if "-f" in arg_dict or "--file" in arg_dict:
-            # try:
-                # FILES_TO_OPEN += arg_dict["-f"]
-            # except Exception:
-                # pass
-            # try:
-                # FILES_TO_OPEN += arg_dict["--file"]
-            # except Exception:
-                # pass
-
-        # if "-k" in arg_dict or "--skip" in arg_dict:
-            # mode_regrade = False
-
-        # if "-r" in arg_dict or "--prompt" in arg_dict:
-            # mode_prompt = True
-            # FILES_TO_OPEN.remove(SCORE_SHEET_FILE_STYLE)
-
-        # if "-s" not in arg_dict and "--section" not in arg_dict and "-n" not in arg_dict and "--netid" not in arg_dict:
-            # default_prompt(students)
-
-        # if "-n" in arg_dict or "--netid" in arg_dict:
-            # nedIDs_to_add = []
-            # try:
-                # nedIDs_to_add += arg_dict["-n"]
-            # except Exception:
-                # pass
-            # try:
-                # nedIDs_to_add += arg_dict["--netid"]
-            # except Exception:
-                # pass
-            # for netID in nedIDs_to_add:
-                # students += validate_student(netID)
-
-        # if "-s" in arg_dict or "--section" in arg_dict:
-            # try:
-                # sections += arg_dict["-s"]
-            # except Exception:
-                # pass
-            # try:
-                # sections += arg_dict["--section"]
-            # except Exception:
-                # pass
-        # sections = validate_sections(sections,students)
-
-        # if "-p" in arg_dict or "--project" in arg_dict:
-            # try:
-                # projects += arg_dict["-p"]
-            # except Exception:
-                # pass
-            # try:
-                # projects += arg_dict["--projects"]
-            # except Exception:
-                # pass
-
+        # validate the projects' directories
         projects = validate_projects(projects,sections,students)
-
+        # students = full_student_list somehow
         students = construct_full_student_list(sections,students)
-
+        # begin grading
         grade(students,projects,mode_regrade,mode_prompt)
 
     except EOFError:

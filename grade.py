@@ -11,8 +11,10 @@ import os
 import time
 import argparse
 
-import Student 
 import Grader
+from Section import Section
+from Student import Student
+from Project import Project
 
 DEBUG = False
 
@@ -29,13 +31,14 @@ def get_argv_dict():
     arg_parser = argparse.ArgumentParser(prog="CSE231 Grading Helper", usage="Assist in the grading of CSE231 projects.")
     # cannot grade a section and a student at the same time, yet (menu wip)
     section_vs_student_group = arg_parser.add_mutually_exclusive_group()
-    section_vs_student_group.add_argument("-s", "--section", help="Desired section to grade.", type=int, default=0)
+    section_vs_student_group.add_argument("-s", "--section", help="Desired section to grade.", type=int)
     section_vs_student_group.add_argument("-n", "--netid", help="Netid of specific student(s) to grade.", type=str, nargs='+')
     arg_parser.add_argument("-p", "--project", help="Desired project to grade.", type=str)
     arg_parser.add_argument("-f", "--file", help="Open a specific file for grading.", type=str, nargs='+')
     arg_parser.add_argument("--debug", help="Put script in debug mode", action="store_true", default=False)
     arg_parser.add_argument("-k", "--skip", help="TBD", action="store_true")
     arg_parser.add_argument("-r", "--prompt", help="TBD", action="store_true")
+    arg_parser.add_argument("-d", "--directory", help="Point to different Handin directory.", default="/user/cse231/Handin/", type=str)
 
     # parse and return dict
     args = arg_parser.parse_args()
@@ -51,121 +54,6 @@ def parse_my_args():
     global sections
     # global students
     # global projects
-
-def validate_sections(sections,students):
-    '''Prompt the user for sections (if not specified in arguments) and check validity of sections'''
-    if sections == [] and students == []:
-        sections = input("Which section(s) would you like to grade?: ").split(",")
-        for index,section in enumerate(sections):
-            sections[index] = section.strip()
-    #It is assumed that all section folders will be named with the following format: "SECTION_IDENTIFIERxxx" where xxx is an integer section number
-    #This script will allow users to simply type the number of their section instead of the full name of the folder
-    dirs_at_root = os.listdir(ROOT_HANDIN_DIRECTORY)
-    valid_section_choices = []
-    for directory in dirs_at_root:
-        if directory.find(SECTION_IDENTIFIER) == 0:
-            sNumber = directory[len(SECTION_IDENTIFIER):]
-            try:
-                sNumber = int(sNumber)
-                valid_section_choices.append(sNumber)
-            except Exception:
-                pass
-    valid_sections = []
-    for section in sections:
-        try:
-            section = int(section)
-            if section not in valid_section_choices:
-                raise Exception("invalid section")
-            valid_sections.append(section)
-        except Exception:
-            if(section != ""):
-                print("\nSection",section,"is invalid.\n")
-    if valid_sections == [] and students == []:
-        print("\nNo valid sections detected.  Program will now halt.\n")
-        exit()
-    #remove duplicates
-    valid_sections = list(set(valid_sections))
-    return valid_sections
-
-def validate_projects(projects,sections,student_list):
-    '''Prompt the user for projects (if not specified in arguments) and check validity'''
-    if projects == []:
-        projects = input("Which project(s) would you like to grade?: ").split(",")
-        for index,section in enumerate(projects):
-            projects[index] = section.strip()
-    #In order for a project to be valid, it must be contained in each of the student directories that is being graded (even if the directory is empty)
-    #A project name does not need to be an integer
-    invalid_projects = []
-    dirs_at_root = os.listdir(ROOT_HANDIN_DIRECTORY)
-    for directory in dirs_at_root:
-        try:
-            if directory.find(SECTION_IDENTIFIER) == 0 and int(directory[len(SECTION_IDENTIFIER):]) in sections:
-                students_in_section = os.listdir(ROOT_HANDIN_DIRECTORY + directory)
-                for student in students_in_section:
-                    dirs_in_student_folder = os.listdir(ROOT_HANDIN_DIRECTORY + directory + "/" + student)
-                    for index,student_directory in enumerate(dirs_in_student_folder):
-                        try: #if it can be converted to an integer then do it (so that 001 is the same as 01 and 1)
-                            dirs_in_student_folder[index] = int(student_directory)
-                        except Exception:
-                            pass
-                    for project in projects:
-                        if int(project) not in dirs_in_student_folder:
-                            invalid_projects.append(str(project))
-        except Exception:
-            pass
-    for student in student_list:
-        students_section = ""
-        for directory in dirs_at_root:
-             if directory.find(SECTION_IDENTIFIER) == 0:
-                 students_in_section = os.listdir(ROOT_HANDIN_DIRECTORY + directory)
-                 if student in students_in_section:
-                     students_section = directory
-                     break
-        dirs_in_student_folder = os.listdir(ROOT_HANDIN_DIRECTORY + directory + "/" + student)
-
-        good_projects = []
-
-        for index,student_directory in enumerate(dirs_in_student_folder):
-            try: #if it can be converted to an integer then do it (so that 001 is the same as 01 and 1)
-                dirs_in_student_folder[index] = int(student_directory)
-            except Exception:
-                pass
-            for project in projects:
-                try:
-                    if int(project) in dirs_in_student_folder:
-                        good_projects.append(str(project))
-                except Exception:
-                    if project in dirs_in_student_folder:
-                        good_projects.append(project)
-        for P in projects:
-            if P not in good_projects:
-                invalid_projects.append(P)
-
-    valid_projects = []
-    for project in projects:
-        if project not in invalid_projects:
-            valid_projects.append(project)
-        else:
-            print("\nProject " + project + " is invalid.")
-    if valid_projects == []:
-        print("\nNo valid projects detected.  Program will now halt.\n")
-        exit()
-    return valid_projects
-
-
-
-def construct_full_student_list(sections,students):
-    '''Break apart sections into lists of students and merge with the students list'''
-    dirs_at_root = os.listdir(ROOT_HANDIN_DIRECTORY)
-    for directory in dirs_at_root:
-        try:
-            if directory.find(SECTION_IDENTIFIER) == 0 and int(directory[len(SECTION_IDENTIFIER):]) in sections:
-                students_in_section = os.listdir(ROOT_HANDIN_DIRECTORY + directory)
-                students += students_in_section
-        except:
-            pass
-    students = list(set(students))
-    return sorted(students)
 
 def prompt_shell(args):
     '''This is a special function that is run as a stand alone program in another window.  It extends the prompt function.'''
@@ -262,7 +150,7 @@ if __name__ == "__main__":
     # os.system("clear")
 
     # WIP
-    grader = Grader.Grader()
+    grader = Grader.Grader(argv_dict["directory"])
 
     # extra file patterns to search for
     if argv_dict["file"]:
@@ -275,21 +163,15 @@ if __name__ == "__main__":
 
     # file patterns to skip
     if argv_dict["skip"]:
-        mode_regrade = False
-        printd("mode_regade = {}".format(mode_regrade))
+        grader._mode_regrade = False
+        printd("mode_regade = {}".format(grader._mode_regrade))
 
     # mode prompt? still have not read the resulting code
     if argv_dict["prompt"]:
-        mode_prompt = True
-        FILES_TO_OPEN.remove(SCORE_SHEET_FILE_STYLE)
-        printd("Files to open: ", FILES_TO_OPEN)
-        printd("mode_prompt = {}".format(mode_prompt))
-
-    # default behaviour
-    if argv_dict["section"] is None and argv_dict["netid"] is None:
-        grader._default_prompt()
-    else:
-        printd("section = {} netid = {}". format(argv_dict["section"], argv_dict["netid"]))
+        grader._mode_prompt = True
+        Grader.FILES_TO_OPEN.remove(Grader.SCORE_SHEET_FILE_STYLE)
+        printd("Files to open: ", Grader.FILES_TO_OPEN)
+        printd("mode_prompt = {}".format(grader._mode_prompt))
 
     # grade student(s) specifically
     if argv_dict["netid"]:
@@ -302,10 +184,8 @@ if __name__ == "__main__":
 
     # grade section(s) specifically
     if argv_dict["section"]:
-        sections.append(argv_dict["section"])
-        if not DEBUG:
-            sections = validate_sections(sections, grader._students)
-        printd("sections = {}".format(sections))
+        grader._sections.append(argv_dict["section"])
+        printd("sections = {}".format(grader._sections))
 
     # grade specific project
     if argv_dict["project"]:
@@ -335,15 +215,23 @@ if __name__ == "__main__":
     print("     |           CSE 231 Grading Script            |    ")
     print("                                                        ")
 
+    # default behaviour
+    if argv_dict["section"] is None and argv_dict["netid"] is None:
+        grader.default_prompt()
+    else:
+        printd("section = {} netid = {}". format(argv_dict["section"], argv_dict["netid"]))
+
     try:
+        # validate sections
+        grader._sections = Section.validate_sections(grader)
         # validate the projects' directories
-        grader._projects = validate_projects(grader._projects, grader._sections,
-                grader._students)
+        grader._projects = Project.validate_projects(grader)
         # students = full_student_list somehow
-        grader._students = construct_full_student_list(grader._sections,
-                grader._students)
+        grader._students = Student.construct_full_student_list(grader)
         # begin grading
+        printd("Begin grading.")
         grader.grade()
+        printd("Finished grading.")
 
     except EOFError:
         grader.exit_message()

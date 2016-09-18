@@ -11,6 +11,9 @@ import os
 import time
 import argparse
 
+import Student 
+import Grader
+
 DEBUG = False
 
 ROOT_HANDIN_DIRECTORY = "/user/cse231/Handin/"        #this should point to the folder containing all of the handin data, filepath should end in a "/" character
@@ -149,21 +152,7 @@ def validate_projects(projects,sections,student_list):
         exit()
     return valid_projects
 
-def validate_student(student):
-    '''Ensure that a student is in the file system.  Can handle partial names.  Returns multiple students if there are multiple matches'''
-    dirs_at_root = os.listdir(ROOT_HANDIN_DIRECTORY)
-    student_found = 0
-    student_list = []
-    for directory in dirs_at_root:
-        if directory.find(SECTION_IDENTIFIER) == 0:
-            students_in_section = os.listdir(ROOT_HANDIN_DIRECTORY + directory)
-            for full_student_name in students_in_section:
-                if full_student_name.find(student) == 0:
-                    student_list.append(full_student_name)
-    if student_list == []:
-        print("\nNo student with netID pattern \""+student+"\" could be found.  Program will now halt.\n")
-        exit()
-    return student_list
+
 
 def construct_full_student_list(sections,students):
     '''Break apart sections into lists of students and merge with the students list'''
@@ -177,80 +166,6 @@ def construct_full_student_list(sections,students):
             pass
     students = list(set(students))
     return sorted(students)
-
-def check_for_errors(section,student,project):
-    '''Do a sanity check on the scores entered by the grader'''
-
-    score_sheet = SCORE_SHEET_FILE_STYLE
-    if SCORE_SHEET_FILE_STYLE.find("*") != -1:
-        score_sheet = score_sheet.replace("*",student)
-
-    grade_file = open(ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/"+score_sheet,"r")
-    alarms = []
-    max_score = None
-    given_score = None
-    sum_of_parts = 0
-    state = 1
-    for line in grade_file:
-        line = line.strip()
-        if state == 1:
-            if line == "":
-                continue
-            else:
-                given_score_pos = line.find("Score: __") + len("Score: __")
-                given_score_end = line[given_score_pos:].find("__") + given_score_pos
-                try:
-                    max_score = int(line[given_score_end+5:])
-                    given_score = int(line[given_score_pos:given_score_end])
-                    state = 2
-                except Exception:
-                    alarms.append("Could not parse score!")
-                    state = -1
-        elif state == 2:
-            score_start_pos = line.find("__")
-            score_end_pos = line[score_start_pos+2:].find("__") + score_start_pos + 2
-            try:
-                value = int(line[score_start_pos+2:score_end_pos])
-                sum_of_parts += value
-            except Exception:
-                pass
-    if sum_of_parts != given_score:
-        alarms.append("Sum of components do not match the given score.")
-    if given_score > max_score:
-        alarms.append("The given score is greater than the maximum allowable points.")
-    if given_score == 0:
-        alarms.append("You have given a Zero for this assignment.")
-    if alarms == []:
-        #make a hidden log file
-        #lets program know if file is already graded, can be used to track if a project has been graded
-        #look at time stamp to see when it was graded if needed, also track which user completed the grading
-        os.system("echo \"$USER\" > "+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/.graded")
-        return
-    print("\n========================= Score sheet sanity check! =========================\n")
-    for alarm in alarms:
-        print(alarm+"\n")
-    user_input = input("To ignore this warning, type \"i\".\nTo re-examine the score sheet, type anything else: ")
-    if user_input == "i":
-        #make a hidden log file
-        #lets program know if file is already graded, can be used to track if a project has been graded
-        #look at time stamp to see when it was graded if needed, also track which user completed the grading
-        os.system("echo \"$USER\" > "+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/.graded")
-        return
-    else:
-
-        score_sheet = SCORE_SHEET_FILE_STYLE
-        if SCORE_SHEET_FILE_STYLE.find("*") != -1:
-            score_sheet = score_sheet.replace("*",student)
-
-        os.system(EDITOR+" "+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/"+score_sheet+" &")
-        input("\nPress enter to continue\n")
-        check_for_errors(section,student,project)
-
-def prompt(section,student,project):
-    '''Called if the optional "--prompt" flag is detected.  Allows the grader to enter scores and then adds them together.'''
-
-    command = "python3 grade.py __run_a_prompt_shell__ " + section + " " + student + " " + project
-    os.system("gnome-terminal -x " + command)
 
 def prompt_shell(args):
     '''This is a special function that is run as a stand alone program in another window.  It extends the prompt function.'''
@@ -334,126 +249,8 @@ def prompt_shell(args):
     time.sleep(5) #to ensure that the grade sheet has enough time to be opened
     exit()
 
-def grade(students,projects,mode_regrade,mode_prompt):
-    '''Step through the projects and students and allow them to be graded'''
-    for project in projects:
-        for student in students:
-            os.system("clear")
 
-            dirs_at_root = os.listdir(ROOT_HANDIN_DIRECTORY)
-            section = ""
-            for directory in dirs_at_root:
-                if directory.find(SECTION_IDENTIFIER) != 0:
-                    continue
-                try:
-                    students_in_section = os.listdir(ROOT_HANDIN_DIRECTORY+directory)
-                except Exception:
-                    continue
-                if student in students_in_section:
-                    section = directory
-            #ensure that the proper project name is used, project 1 might actually be listed as project 01 or 001
-            project = str(project)
-            available_projects = os.listdir(ROOT_HANDIN_DIRECTORY+section+"/"+student)
-            zeros = 0
-            while project not in available_projects and zeros <= 3:
-                zeros += 1
-                project = "0"+project
 
-            student_project_files = os.listdir(ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project)
-            if ".graded" in student_project_files:
-                if mode_regrade:
-                    user_response = input("Re-Grade project "+str(project)+" for "+student+"? (y/n): ")
-                    if user_response == "n":
-                        continue
-                elif mode_regrade:
-                    continue
-            else:
-                user_response = input("Grade project "+str(project)+" for "+student+"? (y/n): ")
-                if user_response == "n":
-                        continue
-
-            #actually start the grading
-
-            for file_to_open in FILES_TO_OPEN:
-                os.system(EDITOR+" "+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/"+file_to_open+" &")
-
-            if mode_prompt:
-                prompt(section,student,project)
-
-            print()
-            for f in os.listdir(ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project):
-                if f[0] != ".":
-                    print(f)
-            print()
-
-            print("To run a program-----------------\"run PROGRAM_NAME [arguments]\"")
-            print("To list files--------------------\"ls\"")
-            print("To open a file-------------------\"open FILE_NAME\"")
-            print("To continue----------------------\"c\"")
-            print("To quit--------------------------\"q\"\n")
-
-            while(True):
-
-                user_input = input("--> ")
-                if user_input == "q":
-                    check_for_errors(section,student,project)
-                    exit_message()
-                    exit()
-                elif user_input == "c":
-                    check_for_errors(section,student,project)
-                    break
-                elif user_input == "ls":
-                    print()
-                    for f in os.listdir(ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project):
-                        if f[0] != ".":
-                            print(f)
-                    print()
-
-                elif user_input.find("run") == 0:
-                    try:
-                        command = "python3 -i "+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/"+" ".join(user_input.split()[1:])
-                        os.system("gnome-terminal --working-directory="+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+" -x "+command)
-
-                    except Exception as e:
-                        print("Could not run program")
-
-                elif user_input.find("open") == 0:
-                    command = user_input.split()
-                    os.system(EDITOR+" "+ROOT_HANDIN_DIRECTORY+section+"/"+student+"/"+project+"/"+" ".join(command[1:])+" &")
-                else:
-                    print("\nTo run a program-----------------\"run PROGRAM_NAME [arguments]\"")
-                    print("To open a file-------------------\"open FILE_NAME\"")
-                    print("To continue----------------------\"c\"")
-                    print("To quit--------------------------\"q\"\n")
-    exit_message()
-
-def exit_message():
-    print("\n")
-    print("                        .   *        .       .")
-    print("         *      -0-")
-    print("            .                .  *       - )-")
-    print("         .      *       o       .       *")
-    print("   o   save         |")
-    print("           your    -O-")
-    print("  .            files!        *      .     -0-")
-    print("         *  o     .    '       *      .        o")
-    print("                .         .        |      *")
-    print("     *             *              -O-          .")
-    print("           .             *         |     ,")
-    print("                  .           o")
-    print("          .---.")
-    print("    =   _/__~0_\_     .  *            o       '")
-    print("   = = (_________)             .")
-    print("                   .                        *")
-    print("         *               - ) -       *")
-    print("                .               .")
-    print()
-
-def default_prompt(students):
-    user_selection = input("\nWould you like to grade multiple students? (y/n): ")
-    if(user_selection.lower() == "n"):
-        student_to_grade = input("What is the netID of the student you would like to grade?: ")
-        students += validate_student(student_to_grade)
 
 if __name__ == "__main__":
    # get args from commands
@@ -464,21 +261,12 @@ if __name__ == "__main__":
 
     # os.system("clear")
 
-    # containers for data
-    mode_regrade = True
-    mode_prompt = False
-    sections = []
-    students = []
-    projects = []
-    netIDs = []
-
-    ####################
-    #   Configuration  #
-    ####################
+    # WIP
+    grader = Grader.Grader()
 
     # extra file patterns to search for
     if argv_dict["file"]:
-        FILES_TO_OPEN.extend(argv_dict["file"])
+        grader._file_patterns.extend(argv_dict["file"])
         printd("File patterns to open: ", FILES_TO_OPEN)
 
     # keeping this in there for now
@@ -499,7 +287,7 @@ if __name__ == "__main__":
 
     # default behaviour
     if argv_dict["section"] is None and argv_dict["netid"] is None:
-        default_prompt(students)
+        grader._default_prompt()
     else:
         printd("section = {} netid = {}". format(argv_dict["section"], argv_dict["netid"]))
 
@@ -507,22 +295,22 @@ if __name__ == "__main__":
     if argv_dict["netid"]:
         for net_id in argv_dict["netid"]:
             if DEBUG:
-                students.append(net_id)
+                grader._students.append(net_id)
             else:
-                students.append(validate_student(net_id))
-        printd("students: {}".format(students))
+                grader._students.append(Student.validate_student(net_id))
+        printd("grader._students: {}".format(grader._students))
 
     # grade section(s) specifically
     if argv_dict["section"]:
         sections.append(argv_dict["section"])
         if not DEBUG:
-            sections = validate_sections(sections, students)
+            sections = validate_sections(sections, grader._students)
         printd("sections = {}".format(sections))
 
     # grade specific project
     if argv_dict["project"]:
-        projects.append(argv_dict["project"])
-        printd("projects = {}".format(projects))
+        grader._projects.append(argv_dict["project"])
+        printd("grader._projects = {}".format(grader._projects))
 
     # show me output before moving on when in debug mode
     if argv_dict["debug"]:
@@ -549,12 +337,14 @@ if __name__ == "__main__":
 
     try:
         # validate the projects' directories
-        projects = validate_projects(projects,sections,students)
+        grader._projects = validate_projects(grader._projects, grader._sections,
+                grader._students)
         # students = full_student_list somehow
-        students = construct_full_student_list(sections,students)
+        grader._students = construct_full_student_list(grader._sections,
+                grader._students)
         # begin grading
-        grade(students,projects,mode_regrade,mode_prompt)
+        grader.grade()
 
     except EOFError:
-        exit_message()
+        grader.exit_message()
         exit()

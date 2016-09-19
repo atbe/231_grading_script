@@ -33,6 +33,8 @@ def get_argv_dict():
     arg_parser.add_argument("--debug", help="Put script in debug mode", action="store_true", default=False)
     arg_parser.add_argument("-k", "--skip", help="TBD", action="store_true")
     arg_parser.add_argument("-r", "--prompt", help="TBD", action="store_true")
+    arg_parser.add_argument("-d", "--directory", help="Point to different Handin directory.", default="/user/cse231/Handin/", type=str)
+    arg_parser.add_argument("-e", "--editor", help="Use a different editor to edit grade files.", type=str, default="gedit")
 
     # parse and return dict
     args = arg_parser.parse_args()
@@ -43,11 +45,6 @@ def printd(*strings):
     """Assist when printing for debug mode only."""
     if DEBUG:
         print("DEBUG\t", ' '.join(map(str, strings)))
-
-def parse_my_args():
-    global sections
-    # global students
-    # global projects
 
 def validate_sections(sections,students):
     '''Prompt the user for sections (if not specified in arguments) and check validity of sections'''
@@ -472,9 +469,9 @@ if __name__ == "__main__":
     projects = []
     netIDs = []
 
-    ####################
-    #   Configuration  #
-    ####################
+    # set custom directory
+    ROOT_HANDIN_DIRECTORY = argv_dict["directory"]
+    EDITOR = argv_dict["editor"]
 
     # extra file patterns to search for
     if argv_dict["file"]:
@@ -497,12 +494,6 @@ if __name__ == "__main__":
         printd("Files to open: ", FILES_TO_OPEN)
         printd("mode_prompt = {}".format(mode_prompt))
 
-    # default behaviour
-    if argv_dict["section"] is None and argv_dict["netid"] is None:
-        default_prompt(students)
-    else:
-        printd("section = {} netid = {}". format(argv_dict["section"], argv_dict["netid"]))
-
     # grade student(s) specifically
     if argv_dict["netid"]:
         for net_id in argv_dict["netid"]:
@@ -515,8 +506,6 @@ if __name__ == "__main__":
     # grade section(s) specifically
     if argv_dict["section"]:
         sections.append(argv_dict["section"])
-        if not DEBUG:
-            sections = validate_sections(sections, students)
         printd("sections = {}".format(sections))
 
     # grade specific project
@@ -547,7 +536,15 @@ if __name__ == "__main__":
     print("     |           CSE 231 Grading Script            |    ")
     print("                                                        ")
 
+    # default behaviour
+    if argv_dict["section"] is None and argv_dict["netid"] is None:
+        default_prompt(students)
+    else:
+        printd("section = {} netid = {}". format(argv_dict["section"], argv_dict["netid"]))
+
     try:
+        # validate sections
+        sections = validate_sections(sections, students)
         # validate the projects' directories
         projects = validate_projects(projects,sections,students)
         # students = full_student_list somehow

@@ -26,7 +26,7 @@ def get_argv_dict():
     arg_parser = argparse.ArgumentParser(prog="CSE231 Grading Helper", usage="Assist in the grading of CSE231 projects.")
     # cannot grade a section and a student at the same time, yet (menu wip)
     section_vs_student_group = arg_parser.add_mutually_exclusive_group()
-    section_vs_student_group.add_argument("-s", "--section", help="Desired section to grade.", type=int, default=0)
+    section_vs_student_group.add_argument("-s", "--section", help="Desired section to grade.", type=int)
     section_vs_student_group.add_argument("-n", "--netid", help="Netid of specific student(s) to grade.", type=str, nargs='+')
     arg_parser.add_argument("-p", "--project", help="Desired project to grade.", type=str)
     arg_parser.add_argument("-f", "--file", help="Open a specific file for grading.", type=str, nargs='+')
